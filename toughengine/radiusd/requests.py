@@ -7,23 +7,10 @@ from twisted.internet import defer
 from twisted.web.iweb import IBodyProducer
 from zope.interface import implements
 from twisted.web.client import HTTPConnectionPool
-import json
-import logging
+from toughengine.radiusd.utils import safestr
 
 pool = HTTPConnectionPool(reactor)
 
-
-def safestr(val):
-    if val is None:
-        return ''
-    elif isinstance(val, unicode):
-        try:
-            return val.encode('utf-8')
-        except:
-            return val.encode('GBK')
-    elif isinstance(val, str):
-        return val
-    return val
 
 
 class StringProducer(object):

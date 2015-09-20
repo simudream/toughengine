@@ -46,6 +46,8 @@ class Config():
         self.store = ConfigDict(**{k: v for k, v in self.config.items("store") if k not in self.defaults})
         self.radiusd = ConfigDict(**{k: v for k, v in self.config.items("radiusd") if k not in self.defaults})
 
+        self.defaults.debug = self.defaults.debug in ("1","true")
+
     def update(self):
         """ update config file"""
         for k,v in self.defaults.iteritems():
@@ -86,7 +88,7 @@ def add_test_data():
         secret='123456',
         vendor_id=0,
         coa_port=3799,
-        aaa_auth_url="http://192.168.31.153:1815/",
+        aaa_auth_url="http://192.168.31.153:1815/test/authorize",
         aaa_acct_url="http://192.168.31.153:1815/",
         aaa_logger_url="http://192.168.31.153:1815/"
     )

@@ -53,7 +53,7 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
     def datagramReceived(self, datagram, (host, port)):
         bas = self.nasdb.get(host)
         if not bas:
-            log.msg('Dropping packet from unknown host ' + host, level=logging.DEBUG)
+            log.msg('[Radiusd] :: Dropping packet from unknown host ' + host, level=logging.DEBUG)
             return
 
         secret, vendor_id = bas['secret'], bas['vendor_id']
@@ -61,12 +61,12 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
             _packet = self.createPacket(packet=datagram, dict=self.dict, secret=six.b(str(secret)), vendor_id=vendor_id)
             _packet.deferred.addCallbacks(self.reply, self.on_exception)
             _packet.source = (host, port)
-            log.msg("::Received radius request: %s" % (str(_packet)), level=logging.INFO)
+            log.msg("[Radiusd] :: Received radius request: %s" % (str(_packet)), level=logging.INFO)
             self.logapi.send(nasaddr=host, content=_packet.format_log())
             if self.config.defaults.debug:
                 log.msg(_packet.format_str(), level=logging.DEBUG)
-                proc_deferd = self.processPacket(_packet)
-                proc_deferd.addCallbacks(self.on_process_done, self.on_exception)
+            proc_deferd = self.processPacket(_packet)
+            proc_deferd.addCallbacks(self.on_process_done, self.on_exception)
         except packet.PacketError as err:
             errstr = 'RadiusError:Dropping invalid packet from {0} {1},{2}'.format(host, port, utils.safestr(err))
             self.logapi.send(content=errstr)
@@ -79,7 +79,7 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
         :return None:
         :rtype:
         """
-        log.msg("::Send radius response: %s" % (reply), level=logging.INFO)
+        log.msg("[Radiusd] :: Send radius response: %s" % (reply), level=logging.INFO)
         self.logapi.send(nasaddr=reply.source[0], content=reply.format_log())
         if self.config.defaults.debug:
             log.msg(reply.format_str(), level=logging.DEBUG)
@@ -90,7 +90,7 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
             self.statdb['auth_accept'] = self.statdb.get('auth_accept', 0) + 1
 
     def on_process_done(self,resp):
-        print 'process done',resp
+        pass
 
     def on_exception(self, err):
         self.logapi.send(content=u'RadiusError:Packet process error,{0}'.format(utils.safestr(err)))
@@ -162,9 +162,10 @@ class RADIUSAccess(RADIUS):
             attrs = aaa_resp.get("attrs") or {}
             for attr_name in attrs:
                 try:
-                    reply[attr_name] = attrs[attr_name]
-                except:
-                    errstr = "RadiusError:current radius cannot support attribute {0}".format(attr_name)
+                    reply.AddAttribute(utils.safestr(attr_name),attrs[attr_name])
+                except Exception as err:
+                    errstr = "RadiusError:current radius cannot support attribute {0},{1}".format(
+                        attr_name,utils.safestr(err.message))
                     self.logapi.send(content=errstr)
 
             self.send_accept(req, reply)
@@ -287,19 +288,13 @@ def run_auth(config):
     """run auth service
     :param config:
     """
-    if config.defaults.debug:
-        log.startLogging(sys.stdout)
-    else:
-        log.startLogging(DailyLogFile.fromFullPath(config.radiusd.logfile))
+    log.startLogging(sys.stdout)
     RadiusServer(config).run_auth()
 
 def run_acct(config):
     """run acct service
     :param config:
     """
-    if config.defaults.debug:
-        log.startLogging(sys.stdout)
-    else:
-        log.startLogging(DailyLogFile.fromFullPath(config.radiusd.logfile))
+    log.startLogging(sys.stdout)
     RadiusServer(config).run_acct()
 

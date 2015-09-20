@@ -18,7 +18,7 @@ import base64
 import datetime
 import hashlib
 import six
-import time
+import json
 import decimal
 
 decimal.getcontext().prec = 11
@@ -51,12 +51,15 @@ def safestr(val):
     if val is None:
         return ''
     elif isinstance(val, unicode):
-        try:
-            return val.encode('utf-8')
-        except:
-           return val.encode('GBK')
+        return val.encode('utf-8')
     elif isinstance(val, str):
         return val
+    elif isinstance(val, int):
+        return str(val)
+    elif isinstance(val, float):
+        return str(val)
+    elif isinstance(val,dict):
+        return json.dumps(val,ensure_ascii=False)
     return val
 
 class AESCipher:
@@ -655,4 +658,4 @@ class AcctPacket2(AcctPacket):
 
 
 if __name__ == "__main__":
-    print isinstance(safestr(u"sdf"),unicode)
+    print safestr({"sdsd":"sdfsf"})

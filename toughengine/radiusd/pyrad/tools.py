@@ -29,7 +29,7 @@ def EncodeAddress(addr):
 
 def EncodeInteger(num):
     if not isinstance(num, six.integer_types):
-        raise TypeError('Can not encode non-integer as integer')
+        raise TypeError('Can not encode non-integer({0}) as integer'.format(num))
     return struct.pack('!I', num)
 
 

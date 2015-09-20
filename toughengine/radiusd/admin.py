@@ -51,15 +51,15 @@ class Application(cyclone.web.Application):
 
         all_handlers = [
             (r"/", handlers.HomeHandler),
+            (r"/test/authorize", handlers.AuthHandler),
+            (r"/test/acctounting", handlers.AcctHandler),
+            (r"/test/logger", handlers.LoggerHandler),
         ]
         cyclone.web.Application.__init__(self, all_handlers,  **settings)
 
 
 def run_admin(config):
-    if config.defaults.debug:
-        log.startLogging(sys.stdout)
-    else:
-        log.startLogging(DailyLogFile.fromFullPath(config.admin.logfile))
+    log.startLogging(sys.stdout)
     app = Application(config)
     reactor.listenTCP(int(config.admin.port), app, interface=config.admin.host)
     reactor.run()
