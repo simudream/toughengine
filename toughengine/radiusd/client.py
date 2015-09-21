@@ -21,21 +21,21 @@ class HttpClient():
         self.config = config
         self.redb = redb
 
-    def make_sign(self, params=[]):
+    def make_sign(self, secret, params=[]):
         """ make sign
         :param params: params list
         :return: :rtype:
         """
         _params = [safestr(p) for p in params if p is not None]
         _params.sort()
-        _params.insert(0, self.config.defaults.secret)
+        _params.insert(0, secret)
         strs = safestr(''.join(_params))
         # if self.config.defaults.debug:
         #     log.msg("[HttpClient] ::::::: sign_src = %s" % strs, level=logging.DEBUG)
         mds = md5(strs).hexdigest()
         return mds.upper()
 
-    def check_sign(self,msg):
+    def check_sign(self, secret, msg):
         """ check message sign
         :param msg: dict type  data
         :return: :rtype: boolean
@@ -44,14 +44,14 @@ class HttpClient():
             return False
         sign = msg['sign']
         params = [msg[k] for k in msg if k != 'sign' ]
-        local_sign = self.make_sign(params)
+        local_sign = self.make_sign(secret, params)
         if self.config.defaults.debug:
             log.msg("[HttpClient] ::::::: remote_sign = %s ,local_sign = %s" % (sign, local_sign), level=logging.DEBUG)
         return sign == local_sign
 
 
     @defer.inlineCallbacks
-    def send(self,apiurl,reqdata):
+    def send(self,apiurl,reqdata,secret):
         """ send radius request
         :param apiurl: oss server api
         :param reqdata: json data
@@ -71,7 +71,7 @@ class HttpClient():
                 defer.returnValue(dict(code=1, msg=u'server return error http status code {0}'.format(resp.code)))
             else:
                 result = resp_json
-                if not self.check_sign(result):
+                if not self.check_sign(secret, result):
                     defer.returnValue(dict(code=1, msg=u"sign error"))
                 else:
                     defer.returnValue(result)
@@ -93,9 +93,9 @@ class HttpClient():
         :param textinfo:
         """
         try:
-            sign = self.make_sign([username, domain, macaddr, nasaddr, vlanid1, vlanid2, textinfo])
             nas = yield self.redb.get_nas(nasaddr)
-            apiurl = nas and nas.get("aaa_auth_url") or None
+            sign = self.make_sign([username, domain, macaddr, nasaddr, vlanid1, vlanid2, textinfo],nas.get("api_secret"))
+            apiurl = nas and nas.get("api_auth_url") or None
             reqdata = json.dumps(dict(
                 username=username,
                 domain=safestr(domain),
@@ -106,7 +106,7 @@ class HttpClient():
                 textinfo=safestr(textinfo),
                 sign=sign
             ), ensure_ascii=False)
-            resp = yield self.send(apiurl, reqdata)
+            resp = yield self.send(apiurl, reqdata, nas.get("api_secret"))
             defer.returnValue(resp)
         except Exception as err:
             log.msg(u"[HttpClient] ::::::: authorize failure,%s" % safestr(err.message))
@@ -130,10 +130,11 @@ class HttpClient():
         :param output_pkts:
         """
         try:
-            sign = self.make_sign([username, session_id, session_time, session_timeout, macaddr, nasaddr, ipaddr,
-                                input_octets, output_octets, input_pkts, output_pkts])
             nas = yield self.redb.get_nas(nasaddr)
-            apiurl = nas and nas.get("aaa_acct_url") or None
+            sign = self.make_sign([username, session_id, session_time, session_timeout, macaddr, nasaddr, ipaddr,
+                                input_octets, output_octets, input_pkts, output_pkts], nas.get("api_secret"))
+
+            apiurl = nas and nas.get("api_acct_url") or None
             reqdata = json.dumps(dict(
                 req_type=req_type,
                 username=username,
@@ -149,7 +150,7 @@ class HttpClient():
                 output_pkts=output_pkts,
                 sign=sign
             ), ensure_ascii=False)
-            resp = yield self.send(apiurl, reqdata)
+            resp = yield self.send(apiurl, reqdata, nas.get("api_secret"))
             defer.returnValue(resp)
         except Exception as err:
             log.msg(u"[HttpClient] ::::::: accounting failure,%s" % safestr(err.message))
@@ -170,7 +171,7 @@ class LoggerClient():
         :param content:
         """
         nas = yield self.redb.get_nas(nasaddr)
-        apiurl = nas and nas.get("aaa_logger_url") or self.config.defaults.get("log_server")
+        apiurl = nas and nas.get("api_logger_url") or self.config.defaults.get("log_server")
         if apiurl:
             if self.config.defaults.debug:
                 log.msg("[LoggerClient] ::::::: Send http log request to {0}, {1}".format(safestr(apiurl), safestr(content)))

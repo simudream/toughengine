@@ -91,9 +91,10 @@ if __name__ == "__main__":
             secret='123456',
             vendor_id=0,
             coa_port=3799,
-            aaa_auth_url="http://192.168.31.153:1815/",
-            aaa_acct_url="http://192.168.31.153:1815/",
-            aaa_logger_url="http://192.168.31.153:1815/"
+            api_secret="LpWE9AtfDPQ3ufXBS6gJ37WW8TnSF920",
+            api_auth_url="http://192.168.31.153:1815/",
+            api_acct_url="http://192.168.31.153:1815/",
+            api_logger_url="http://192.168.31.153:1815/"
         )
 
         nas2 = dict(
@@ -101,9 +102,10 @@ if __name__ == "__main__":
             secret='123456',
             vendor_id=0,
             coa_port=3799,
-            aaa_auth_url="http://192.168.31.153:1815/test/authorize",
-            aaa_acct_url="http://192.168.31.153:1815/",
-            aaa_logger_url="http://192.168.31.153:1815/"
+            api_secret="LpWE9AtfDPQ3ufXBS6gJ37WW8TnSF920",
+            api_auth_url="http://192.168.31.153:1815/test/authorize",
+            api_acct_url="http://192.168.31.153:1815/",
+            api_logger_url="http://192.168.31.153:1815/"
         )
 
         yield redb.set_nas('127.0.0.1',nas1)
