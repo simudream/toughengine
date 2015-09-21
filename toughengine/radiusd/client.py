@@ -164,6 +164,11 @@ class LoggerClient():
 
     @defer.inlineCallbacks
     def send(self,nasaddr=None,content=None):
+        """
+        send logger to logserver
+        :param nasaddr:
+        :param content:
+        """
         nas = yield self.redb.get_nas(nasaddr)
         apiurl = nas and nas.get("aaa_logger_url") or self.config.defaults.get("log_server")
         if apiurl:
