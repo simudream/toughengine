@@ -3,6 +3,7 @@
 
 from twisted.python import log
 from toughengine.radiusd import requests
+from toughengine.radiusd.utils import safestr
 from hashlib import md5
 from twisted.internet import defer
 import json
@@ -16,21 +17,21 @@ class HttpClient():
     :type config:
     """
 
-    def __init__(self, config, nasdb):
+    def __init__(self, config, redb):
         self.config = config
-        self.nasdb = nasdb
+        self.redb = redb
 
     def make_sign(self, params=[]):
         """ make sign
         :param params: params list
         :return: :rtype:
         """
-        _params = [requests.safestr(p) for p in params if p is not None]
+        _params = [safestr(p) for p in params if p is not None]
         _params.sort()
         _params.insert(0, self.config.defaults.secret)
-        strs = requests.safestr(''.join(_params))
-        if self.config.defaults.debug:
-            log.msg("[HttpClient] :: sign_src = %s" % strs, level=logging.DEBUG)
+        strs = safestr(''.join(_params))
+        # if self.config.defaults.debug:
+        #     log.msg("[HttpClient] ::::::: sign_src = %s" % strs, level=logging.DEBUG)
         mds = md5(strs).hexdigest()
         return mds.upper()
 
@@ -43,7 +44,10 @@ class HttpClient():
             return False
         sign = msg['sign']
         params = [msg[k] for k in msg if k != 'sign' ]
-        return sign == self.make_sign(params)
+        local_sign = self.make_sign(params)
+        if self.config.defaults.debug:
+            log.msg("[HttpClient] ::::::: remote_sign = %s ,local_sign = %s" % (sign, local_sign), level=logging.DEBUG)
+        return sign == local_sign
 
 
     @defer.inlineCallbacks
@@ -54,20 +58,20 @@ class HttpClient():
         """
         try:
             if self.config.defaults.debug:
-                log.msg("[HttpClient] :: Send http request to {0}, {1}".format(apiurl,requests.safestr(reqdata)))
+                log.msg("[HttpClient] ::::::: Send http request to {0}, {1}".format(safestr(apiurl),safestr(reqdata)))
 
             headers = {"Content-Type": ["application/json;charset=utf-8"]}
-            resp = yield requests.post(apiurl, data=reqdata, headers=headers)
+            resp = yield requests.post(safestr(apiurl), data=reqdata, headers=headers)
             resp_json = yield resp.json()
 
             if self.config.defaults.debug:
-                log.msg("[HttpClient] :: Received http response from {0}, {1}".format(apiurl, requests.safestr(resp_json)))
+                log.msg("[HttpClient] ::::::: Received http response from {0}, {1}".format(safestr(apiurl), safestr(resp_json)))
 
             if resp.code != 200:
                 defer.returnValue(dict(code=1, msg=u'server return error http status code {0}'.format(resp.code)))
             else:
                 result = resp_json
-                if self.check_sign(result):
+                if not self.check_sign(result):
                     defer.returnValue(dict(code=1, msg=u"sign error"))
                 else:
                     defer.returnValue(result)
@@ -90,22 +94,22 @@ class HttpClient():
         """
         try:
             sign = self.make_sign([username, domain, macaddr, nasaddr, vlanid1, vlanid2, textinfo])
-            nas = self.nasdb.get(nasaddr)
+            nas = yield self.redb.get_nas(nasaddr)
             apiurl = nas and nas.get("aaa_auth_url") or None
             reqdata = json.dumps(dict(
                 username=username,
-                domain=domain,
-                macaddr=macaddr,
+                domain=safestr(domain),
+                macaddr=safestr(macaddr),
                 nasaddr=nasaddr,
                 vlanid1=vlanid1,
                 vlanid2=vlanid2,
-                textinfo=textinfo,
+                textinfo=safestr(textinfo),
                 sign=sign
             ), ensure_ascii=False)
             resp = yield self.send(apiurl, reqdata)
             defer.returnValue(resp)
         except Exception as err:
-            log.msg(u"[HttpClient] :: authorize failure,%s" % requests.safestr(err.message))
+            log.msg(u"[HttpClient] ::::::: authorize failure,%s" % safestr(err.message))
             defer.returnValue(dict(code=1, msg=u"authorize error, please see log detail"))
 
     @defer.inlineCallbacks
@@ -128,7 +132,7 @@ class HttpClient():
         try:
             sign = self.make_sign([username, session_id, session_time, session_timeout, macaddr, nasaddr, ipaddr,
                                 input_octets, output_octets, input_pkts, output_pkts])
-            nas = self.nasdb.get(nasaddr)
+            nas = yield self.redb.get_nas(nasaddr)
             apiurl = nas and nas.get("aaa_acct_url") or None
             reqdata = json.dumps(dict(
                 req_type=req_type,
@@ -148,29 +152,27 @@ class HttpClient():
             resp = yield self.send(apiurl, reqdata)
             defer.returnValue(resp)
         except Exception as err:
-            log.msg(u"[HttpClient] :: accounting failure,%s" % requests.safestr(err.message))
+            log.msg(u"[HttpClient] ::::::: accounting failure,%s" % safestr(err.message))
             defer.returnValue(dict(code=1, msg=u"accounting error, please see log detail"))
 
 
 class LoggerClient():
 
-    def __init__(self,config,nasdb):
+    def __init__(self,config,redb):
         self.config = config
-        self.nasdb = nasdb
+        self.redb = redb
 
-    def on_resp(self,resp):
-        log.msg("[LoggerClient] :: Resp {0}, Send log done".format(resp.code))
-
+    @defer.inlineCallbacks
     def send(self,nasaddr=None,content=None):
-        nas = self.nasdb.get(nasaddr)
+        nas = yield self.redb.get_nas(nasaddr)
         apiurl = nas and nas.get("aaa_logger_url") or self.config.defaults.get("log_server")
         if apiurl:
             if self.config.defaults.debug:
-                log.msg("[LoggerClient] :: Send http log request to {0}, {1}".format(apiurl, requests.safestr(content)))
+                log.msg("[LoggerClient] ::::::: Send http log request to {0}, {1}".format(safestr(apiurl), safestr(content)))
 
             headers = {"Content-Type": ["text/plain;charset=utf-8"]}
-            deferd = requests.post(apiurl, data=content, headers=headers)
-            deferd.addCallbacks(self.on_resp,self.on_resp)
+            resp = yield requests.post(safestr(apiurl), data=safestr(content), headers=headers)
+            log.msg("[LoggerClient] ::::::: Resp {0}, Send log done".format(resp.code))
         else:
-            log.msg("[LoggerClient] :: Not send, {0}".format(requests.safestr(content)))
+            log.msg("[LoggerClient] ::::::: Not send, {0}".format(safestr(content)))
 

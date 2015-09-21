@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #coding:utf-8
 from toughengine.radiusd.console.base import BaseHandler
-from toughengine.radiusd.console.tester import AuthHandler
+from toughengine.radiusd.console.tester import AuthHandler,AcctHandler
 
 class HomeHandler(BaseHandler):
     def post(self):

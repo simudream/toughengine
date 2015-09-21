@@ -68,31 +68,55 @@ class Config():
         with open(self.filename, 'w') as cfs:
             self.config.write(cfs)
 
-
-def add_test_data():
-    config = Config("/Users/wangjuntao/toughstruct/toughengine/test.conf")
-    import store
-    nasdb = store.Store(config.store.nas_db)
-    nasdb['127.0.0.1'] = dict(
-        ipaddr='127.0.0.1',
-        secret='123456',
-        vendor_id=0,
-        coa_port=3799,
-        aaa_auth_url="http://192.168.31.153:1815/",
-        aaa_acct_url="http://192.168.31.153:1815/",
-        aaa_logger_url="http://192.168.31.153:1815/"
-    )
-
-    nasdb['192.168.31.153'] = dict(
-        ipaddr='192.168.31.153',
-        secret='123456',
-        vendor_id=0,
-        coa_port=3799,
-        aaa_auth_url="http://192.168.31.153:1815/test/authorize",
-        aaa_acct_url="http://192.168.31.153:1815/",
-        aaa_logger_url="http://192.168.31.153:1815/"
-    )
-    nasdb.sync()
-
 if __name__ == "__main__":
-    add_test_data()
+    from twisted.internet import reactor
+    from twisted.internet import defer
+    import store
+
+
+    def cbk(resp):
+        print resp
+        reactor.stop()
+
+    @defer.inlineCallbacks
+    def add_test_data():
+
+        config = Config("/Users/wangjuntao/toughstruct/toughengine/test.conf")
+        print config.config
+        redb = store.RedisStore(config)
+        yield redb.connect()
+
+        nas1 = dict(
+            ipaddr='127.0.0.1',
+            secret='123456',
+            vendor_id=0,
+            coa_port=3799,
+            aaa_auth_url="http://192.168.31.153:1815/",
+            aaa_acct_url="http://192.168.31.153:1815/",
+            aaa_logger_url="http://192.168.31.153:1815/"
+        )
+
+        nas2 = dict(
+            ipaddr='192.168.31.153',
+            secret='123456',
+            vendor_id=0,
+            coa_port=3799,
+            aaa_auth_url="http://192.168.31.153:1815/test/authorize",
+            aaa_acct_url="http://192.168.31.153:1815/",
+            aaa_logger_url="http://192.168.31.153:1815/"
+        )
+
+        yield redb.set_nas('127.0.0.1',nas1)
+        yield redb.set_nas('192.168.31.153', nas2)
+
+
+
+    d = add_test_data()
+    d.addCallback(cbk)
+    d.addErrback(cbk)
+    reactor.run()
+
+
+
+
+

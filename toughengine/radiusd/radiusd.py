@@ -38,11 +38,13 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
         _dict = dictionary.Dictionary(self.dictfile)
         host.Host.__init__(self, dict=_dict)
         self.auth_delay = utils.AuthDelay(0)
-        self.nasdb = store.Store(self.config.store.nas_db)
-        self.statdb = store.Store(self.config.store.stat_db, writeback=True)
-        task.LoopingCall(self.statdb.sync).start(10)
-        self.radapi = client.HttpClient(self.config,self.nasdb)
-        self.logapi = client.LoggerClient(self.config,self.nasdb)
+        self.redb = store.RedisStore(self.config)
+        self.redb.connect().addCallbacks(self.on_redis_connect,self.on_exception)
+        self.radapi = client.HttpClient(self.config,self.redb)
+        self.logapi = client.LoggerClient(self.config,self.redb)
+
+    def on_redis_connect(self,resp):
+        log.msg("redis connect done {0}".format(resp))
 
     def processPacket(self, pkt):
         pass
@@ -50,26 +52,32 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
     def createPacket(self, **kwargs):
         raise NotImplementedError('Attempted to use a pure base class')
 
-    def datagramReceived(self, datagram, (host, port)):
-        bas = self.nasdb.get(host)
-        if not bas:
-            log.msg('[Radiusd] :: Dropping packet from unknown host ' + host, level=logging.DEBUG)
-            return
 
-        secret, vendor_id = bas['secret'], bas['vendor_id']
-        try:
-            _packet = self.createPacket(packet=datagram, dict=self.dict, secret=six.b(str(secret)), vendor_id=vendor_id)
-            _packet.deferred.addCallbacks(self.reply, self.on_exception)
-            _packet.source = (host, port)
-            log.msg("[Radiusd] :: Received radius request: %s" % (str(_packet)), level=logging.INFO)
-            self.logapi.send(nasaddr=host, content=_packet.format_log())
-            if self.config.defaults.debug:
-                log.msg(_packet.format_str(), level=logging.DEBUG)
-            proc_deferd = self.processPacket(_packet)
-            proc_deferd.addCallbacks(self.on_process_done, self.on_exception)
-        except packet.PacketError as err:
-            errstr = 'RadiusError:Dropping invalid packet from {0} {1},{2}'.format(host, port, utils.safestr(err))
-            self.logapi.send(content=errstr)
+
+    def datagramReceived(self, datagram, (host, port)):
+        def preProcessPacket(bas):
+            if not bas:
+                log.msg('[Radiusd] ::::::: Dropping packet from unknown host ' + host, level=logging.DEBUG)
+                return
+            secret, vendor_id = bas['secret'], bas['vendor_id']
+            try:
+                _packet = self.createPacket(packet=datagram, dict=self.dict, secret=six.b(str(secret)),
+                                            vendor_id=vendor_id)
+                _packet.deferred.addCallbacks(self.reply, self.on_exception)
+                _packet.source = (host, port)
+                log.msg("[Radiusd] ::::::: Received radius request: %s" % (str(_packet)), level=logging.INFO)
+                self.logapi.send(nasaddr=host, content=_packet.format_log())
+                if self.config.defaults.debug:
+                    log.msg(_packet.format_str(), level=logging.DEBUG)
+                proc_deferd = self.processPacket(_packet)
+                proc_deferd.addCallbacks(self.on_process_done, self.on_exception)
+            except packet.PacketError as err:
+                errstr = 'RadiusError:Dropping invalid packet from {0} {1},{2}'.format(host, port, utils.safestr(err))
+                self.logapi.send(content=errstr)
+
+        bas_derferd = self.redb.get_nas(host)
+        bas_derferd.addCallbacks(preProcessPacket, self.on_exception)
+
 
     def reply(self, reply):
         """
@@ -79,15 +87,15 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
         :return None:
         :rtype:
         """
-        log.msg("[Radiusd] :: Send radius response: %s" % (reply), level=logging.INFO)
+        log.msg("[Radiusd] ::::::: Send radius response: %s" % (reply), level=logging.INFO)
         self.logapi.send(nasaddr=reply.source[0], content=reply.format_log())
         if self.config.defaults.debug:
             log.msg(reply.format_str(), level=logging.DEBUG)
         self.transport.write(reply.ReplyPacket(), reply.source)
         if reply.code == packet.AccessReject:
-            self.statdb['auth_reject'] = self.statdb.get('auth_reject', 0) + 1
+            self.redb.stat_incr('auth_reject')
         elif reply.code == packet.AccessAccept:
-            self.statdb['auth_accept'] = self.statdb.get('auth_accept', 0) + 1
+            self.redb.stat_incr('auth_accept')
 
     def on_process_done(self,resp):
         pass
@@ -134,9 +142,10 @@ class RADIUSAccess(RADIUS):
         :return: :rtype:
         :raise PacketError:
         """
-        self.statdb['auth_all'] = self.statdb.get('auth_all', 0) + 1
+
+        self.redb.stat_incr('auth_all')
         if req.code != packet.AccessRequest:
-            self.statdb['auth_drop'] = self.statdb.get('auth_drop', 0) + 1
+            self.redb.stat_incr('auth_drop')
             raise PacketError('non-AccessRequest packet on authentication socket')
 
         reply = req.CreateReply()
@@ -226,9 +235,9 @@ class RADIUSAccounting(RADIUS):
         :return:
         :rtype:
         """
-        self.statdb['acct_all'] = self.statdb.get('acct_all', 0) + 1
+        self.redb.stat_incr('acct_all')
         if req.code != packet.AccountingRequest:
-            self.statdb['acct_drop'] = self.statdb.get('acct_drop', 0) + 1
+            self.redb.stat_incr('acct_drop')
             raise PacketError('non-AccountingRequest packet on authentication socket')
 
         reply = req.CreateReply()

@@ -9,7 +9,7 @@ from mako.template import Template
 from hashlib import md5
 from twisted.python import log
 from toughengine.radiusd import utils
-
+import logging
 
 class BaseHandler(cyclone.web.RequestHandler):
     
@@ -21,6 +21,8 @@ class BaseHandler(cyclone.web.RequestHandler):
 
     def initialize(self):
         self.tp_lookup = self.application.tp_lookup
+        if self.settings.debug:
+            log.msg("[api debug] :::::::: %s request body: %s" % (self.request.path, self.request.body))
         
     def on_finish(self):
         pass
@@ -41,6 +43,8 @@ class BaseHandler(cyclone.web.RequestHandler):
         if not template_vars.has_key("code"):
             template_vars["code"] = 0
         resp = json.dumps(template_vars, ensure_ascii=False)
+        if self.settings.debug:
+            log.msg("[api debug] :::::::: %s response body: %s" % (self.request.path, resp))
         self.write(resp)
 
     def render_string(self, template_name, **template_vars):
@@ -54,11 +58,30 @@ class BaseHandler(cyclone.web.RequestHandler):
         template = Template(template_string)
         return template.render(**template_vars)
 
-    def mksign(self, params=[]):
-        _params = [str(p) for p in params if p is not None]
+    def make_sign(self, secret, params=[]):
+        """ make sign
+        :param params: params list
+        :return: :rtype:
+        """
+        _params = [utils.safestr(p) for p in params if p is not None]
         _params.sort()
-        _params.insert(0, self.settings.api_secret)
+        _params.insert(0, secret)
         strs = ''.join(_params)
+        # if self.settings.debug:
+        #     log.msg("sign_src = %s" % strs, level=logging.DEBUG)
+        mds = md5(utils.safestr(strs)).hexdigest()
+        return mds.upper()
+
+    def check_sign(self, secret, msg):
+        """ check message sign
+        :param msg: dict type  data
+        :return: :rtype: boolean
+        """
+        if "sign" not in msg:
+            return False
+        sign = msg['sign']
+        params = [msg[k] for k in msg if k != 'sign']
+        local_sign = self.make_sign(secret, params)
         if self.settings.debug:
-            log.msg("sign_src = %s" % strs)
-        return md5(strs.encode()).hexdigest().upper()
+            log.msg("[api debug] :::::::: remote_sign = %s ,local_sign = %s" % (sign, local_sign), level=logging.DEBUG)
+        return sign == local_sign
