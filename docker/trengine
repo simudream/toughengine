@@ -1,17 +1,17 @@
 #!/bin/sh
 
-appdir=/opt/toughradius
-rundir=/var/toughradius
+appdir=/opt/toughengine
+rundir=/var/toughengine
 
 usage ()
 {
         cat <<EOF
 Usage: $0 [OPTIONS]
-  start              start toughradius
-  stop               stop toughradius
-  restart            restart toughradius
-  status             show toughradius run status
-  upgrade            update toughradius version and restart
+  start              start toughengine
+  stop               stop toughengine
+  restart            restart toughengine
+  status             show toughengine run status
+  upgrade            update toughengine version and restart
 
 All other options are passed to the toughrad program.
 EOF
@@ -24,7 +24,7 @@ start()
     if [ ! -d ${rundir} ]; then
         mkdir -p ${rundir}/data
     fi
-     # toughradius not running, start it
+     # toughengine not running, start it
     if [ ! $( pgrep -f supervisord | wc -l ) -gt 0 ]
     then
         supervisord -n -c /etc/supervisord.conf
@@ -70,11 +70,9 @@ restart()
 upgrade()
 {
     echo 'starting upgrade...'
-    cd ${appdir} && git pull origin stable
-    git checkout stable
-    supervisorctl restart radiusd
-    supervisorctl restart admin
-    supervisorctl restart customer
+    cd ${appdir} && git pull origin master
+    git checkout master
+    supervisorctl restart all
     supervisorctl status
     echo 'upgrade done'
 }

@@ -23,6 +23,7 @@ class HttpClient():
 
     def make_sign(self, secret, params=[]):
         """ make sign
+        :param secret:
         :param params: params list
         :return: :rtype:
         """
@@ -37,6 +38,7 @@ class HttpClient():
 
     def check_sign(self, secret, msg):
         """ check message sign
+        :param secret:
         :param msg: dict type  data
         :return: :rtype: boolean
         """

@@ -13,17 +13,12 @@ class RedisKey():
     def nas_pkey(self,ipaddr):
         return "{0}:{1}:{2}".format(self.dbname,'nas',ipaddr)
 
-    def oss_pkey(self,oss_code):
-        return "{0}:{1}:{2}".format(self.dbname, 'oss', oss_code)
-
     def stat_all_key(self):
         return "{0}:{1}:{2}".format(self.dbname, 'stat','all')
 
     def nas_all_key(self):
         return "{0}:{1}:{2}".format(self.dbname, 'nas','all')
 
-    def oss_all_key(self):
-        return "{0}:{1}:{2}".format(self.dbname, 'oss', 'all')
 
 
 class RedisStore(RedisKey):
@@ -61,20 +56,6 @@ class RedisStore(RedisKey):
 
     def list_nas(self):
         return self.rdb.smembers(self.nas_all_key())
-
-    def get_oss(self, oss_code):
-        return self.rdb.hgetall(self.oss_pkey(oss_code))
-
-    @defer.inlineCallbacks
-    def set_oss(self, oss_code, oss_dict):
-        trans = yield self.rdb.multi()
-        yield self.rdb.hmset(self.oss_pkey(oss_code), oss_dict)
-        yield self.rdb.sadd(self.oss_all_key(),oss_code)
-        result = yield trans.commit()
-        defer.returnValue(result)
-
-    def list_oss(self):
-        return self.rdb.smembers(self.oss_all_key())
 
     def get_stat_data(self):
         return self.rdb.hmget(self.stat_all_key())
