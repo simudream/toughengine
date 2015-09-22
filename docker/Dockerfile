@@ -11,7 +11,7 @@ RUN chmod +x /usr/bin/trengine
 RUN mkdir -p /var/toughengine/data
 
 RUN yum update -y
-RUN yum install -y redis libffi-devel openssl openssl-devel git gcc crontabs python-devel python-setuptools
+RUN yum install -y  libffi-devel openssl openssl-devel git gcc crontabs python-devel python-setuptools
 RUN yum clean all
 
 RUN easy_install pip

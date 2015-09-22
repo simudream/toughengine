@@ -21,12 +21,13 @@ class Application(cyclone.web.Application):
         self.config = config
 
         try:
-            os.environ["TZ"] = config.defaults.tz
+            if 'TZ' not in os.environ:
+                os.environ["TZ"] = config.defaults.tz
             time.tzset()
         except:pass
 
         settings = dict(
-            cookie_secret="12oETzKXQAGaYdkL5gEmGeJJFuYh7EQnp2XdTP1o/Vo=",
+            cookie_secret=os.environ.get('cookie_secret', "12oETzKXQAGaYdkL5gEmGeJJFuYh7EQnp2XdTP1o/Vo="),
             login_url="/",
             template_path=os.path.join(os.path.dirname(__file__), "console/views"),
             static_path=os.path.join(os.path.dirname(__file__), "console/static"),

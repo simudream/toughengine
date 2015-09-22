@@ -269,7 +269,8 @@ class RadiusServer(object):
         self.encrypt = utils.aescipher.encrypt
         self.decrypt = utils.aescipher.decrypt
         try:
-            os.environ["TZ"] = self.config.defaults.tz
+            if 'TZ' not in os.environ:
+                os.environ["TZ"] = self.config.defaults.tz
             time.tzset()
         except:pass
 

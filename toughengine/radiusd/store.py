@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # coding=utf-8
 
+import os
 from cyclone import redis
 from twisted.internet import defer
-from twisted.internet import reactor
+
+
 
 class RedisKey():
 
@@ -33,9 +35,9 @@ class RedisStore(RedisKey):
     @defer.inlineCallbacks
     def connect(self):
         self.rdb = yield redis.ConnectionPool(
-            host=self.config.store.host,
-            port=int(self.config.store.port),
-            dbid=int(self.config.store.dbid),
+            host=os.environ.get("REDIS_HOST", self.config.store.host),
+            port=int(os.environ.get("REDIS_PORT", self.config.store.port)),
+            dbid=int(os.environ.get("REDIS_DBID", self.config.store.dbid)),
             poolsize=int(self.config.store.poolsize),
         )
         defer.returnValue(self.rdb)
