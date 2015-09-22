@@ -27,7 +27,6 @@ class NasAddHandler(BaseHandler):
 
         try:
             ipaddr = req_msg['ipaddr']
-            dns_name = req_msg.get('dns_name','')
             secret = req_msg['secret']
             vendor_id = int(req_msg['vendor_id'])
             coa_port = int(req_msg.get("coa_port",3799))
@@ -36,7 +35,7 @@ class NasAddHandler(BaseHandler):
             api_acct_url = req_msg["api_acct_url"]
             api_logger_url = req_msg["api_logger_url "]
 
-            if validate.is_ip.valid(ipaddr):
+            if not validate.is_ip.valid(ipaddr):
                 raise ValueError("ipaddr {0} format error,{1}".format(ipaddr,validate.is_ip.msg))
 
             if not validate.not_null.valid(secret):
@@ -67,7 +66,6 @@ class NasAddHandler(BaseHandler):
 
         nasdata = dict(
             ipaddr=ipaddr,
-            dns_name=dns_name,
             secret=secret,
             vendor_id=vendor_id,
             coa_port=coa_port,
@@ -85,3 +83,80 @@ class NasAddHandler(BaseHandler):
             result = dict(code=1, msg='insert nasdata to database error')
 
         self.render_json(**result)
+
+
+class NasDelHandler(BaseHandler):
+    """ nas add handler"""
+
+    @defer.inlineCallbacks
+    def post(self):
+        try:
+            req_msg = json.loads(self.request.body)
+            if not self.check_sign(self.settings.api_secret, req_msg):
+                log.msg("[api debug] nas delete request sign error")
+                self.render_json(code=1, msg='sign error')
+                return
+        except Exception as err:
+            log.err('parse params error %s' % safestr(err))
+            self.render_json(code=1, msg='parse params error')
+            return
+
+        ipaddr = req_msg.get('ipaddr')
+        if not validate.is_ip.valid(ipaddr):
+            self.render_json(code=1, msg="ipaddr {0} format error,{1}".format(ipaddr, validate.is_ip.msg))
+            return
+
+        try:
+            yield self.redb.delete(self.redb.nas_pkey(ipaddr))
+            result = dict(code=0, msg='success')
+        except Exception as err:
+            log.err('delete nasdata from database error  %s' % safestr(err))
+            result = dict(code=1, msg='delete nasdata {0} from database error'.format(ipaddr))
+
+        self.render_json(**result)
+
+class NasQueryHandler(BaseHandler):
+    """ nas add handler"""
+
+    @defer.inlineCallbacks
+    def post(self):
+        try:
+            req_msg = json.loads(self.request.body)
+            if not self.check_sign(self.settings.api_secret, req_msg):
+                log.msg("[api debug] nas query request sign error")
+                self.render_json(code=1, msg='sign error')
+                return
+        except Exception as err:
+            log.err('parse params error %s' % safestr(err))
+            self.render_json(code=1, msg='parse params error')
+            return
+
+        ipaddr = req_msg.get('ipaddr')
+        if not validate.is_ip.valid(ipaddr):
+            self.render_json(code=1, msg="ipaddr {0} format error,{1}".format(ipaddr, validate.is_ip.msg))
+            return
+
+        nas = yield self.redb.get_nas(ipaddr)
+        self.render_json(code=0,msg='success',data=nas)
+
+
+
+class NasListHandler(BaseHandler):
+    """ nas add handler"""
+
+    @defer.inlineCallbacks
+    def post(self):
+        try:
+            req_msg = json.loads(self.request.body)
+            if not self.check_sign(self.settings.api_secret, req_msg):
+                log.msg("[api debug] nas list request sign error")
+                self.render_json(code=1, msg='sign error')
+                return
+        except Exception as err:
+            log.err('parse params error %s' % safestr(err))
+            self.render_json(code=1, msg='parse params error')
+            return
+
+        nas_list = yield self.redb.list_nas()
+        self.render_json(code=0, msg='success', data=nas_list)
+
