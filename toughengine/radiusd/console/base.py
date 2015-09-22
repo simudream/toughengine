@@ -21,6 +21,7 @@ class BaseHandler(cyclone.web.RequestHandler):
 
     def initialize(self):
         self.tp_lookup = self.application.tp_lookup
+        self.redb = self.application.redb
         if self.settings.debug:
             log.msg("[api debug] :::::::: %s request body: %s" % (self.request.path, self.request.body))
         

@@ -2,11 +2,11 @@
 #coding=utf-8
 import os
 import cyclone.web
-from twisted.python.logfile import DailyLogFile
 from beaker.cache import CacheManager
 from beaker.util import parse_cache_config_options
 from mako.lookup import TemplateLookup
 from toughengine.radiusd.console import handlers
+from toughengine.radiusd import store
 from twisted.python import log
 from twisted.internet import reactor
 import time
@@ -52,11 +52,20 @@ class Application(cyclone.web.Application):
 
         all_handlers = [
             (r"/", handlers.HomeHandler),
+            (r"/api/v1", handlers.HomeHandler),
+            (r"/api/v1/nas/add", handlers.NasAddHandler),
             (r"/test/authorize", handlers.AuthHandler),
             (r"/test/acctounting", handlers.AcctHandler),
             (r"/test/logger", handlers.LoggerHandler),
         ]
+
+        self.redb = store.RedisStore(self.config)
+        self.redb.connect().addCallback(self.on_redis_connect)
+
         cyclone.web.Application.__init__(self, all_handlers,  **settings)
+
+    def on_redis_connect(self, resp):
+        log.msg("redis connect done {0}".format(resp))
 
 
 def run_admin(config):
