@@ -2,7 +2,7 @@
 #coding:utf-8
 from toughengine.radiusd.console.base import BaseHandler
 from toughengine.radiusd.console.tester import (AuthHandler,AcctHandler)
-from toughengine.radiusd.console.nasapi import NasAddHandler
+from toughengine.radiusd.console.nasapi import (NasSetHandler,NasGetHandler,NasListHandler,NasDelHandler)
 
 class HomeHandler(BaseHandler):
 

@@ -53,7 +53,10 @@ class Application(cyclone.web.Application):
         all_handlers = [
             (r"/", handlers.HomeHandler),
             (r"/api/v1", handlers.HomeHandler),
-            (r"/api/v1/nas/add", handlers.NasAddHandler),
+            (r"/api/v1/nas/set", handlers.NasSetHandler),
+            (r"/api/v1/nas/del", handlers.NasDelHandler),
+            (r"/api/v1/nas/get", handlers.NasGetHandler),
+            (r"/api/v1/nas/list", handlers.NasListHandler),
             (r"/test/authorize", handlers.AuthHandler),
             (r"/test/acctounting", handlers.AcctHandler),
             (r"/test/logger", handlers.LoggerHandler),

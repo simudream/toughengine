@@ -9,7 +9,7 @@ from twisted.internet import defer
 import json
 
 
-class NasAddHandler(BaseHandler):
+class NasSetHandler(BaseHandler):
     """ nas add handler"""
 
     @defer.inlineCallbacks
@@ -115,7 +115,7 @@ class NasDelHandler(BaseHandler):
 
         self.render_json(**result)
 
-class NasQueryHandler(BaseHandler):
+class NasGetHandler(BaseHandler):
     """ nas add handler"""
 
     @defer.inlineCallbacks
