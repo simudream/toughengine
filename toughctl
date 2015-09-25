@@ -7,11 +7,3 @@ from toughengine.radiusd.toughctl import run as runctl
 if __name__ == '__main__':
     runctl()
 
-    
-        
-
-    
-    
-    
-
-
