@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 .idea
 *.class
 # Package Files #
@@ -45,8 +45,7 @@ toughradius.egg-info
 dist
 .DS_Store
 radiusd_cnf.conf
-toughengine.conf
-=======
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -104,4 +103,4 @@ docs/_build/
 
 # PyBuilder
 target/
->>>>>>> 59b026973c47095eb24a1f73809668779040ae47
+
