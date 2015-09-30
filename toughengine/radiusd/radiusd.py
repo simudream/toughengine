@@ -73,7 +73,7 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
                 proc_deferd.addCallbacks(self.on_process_done, self.on_exception)
             except packet.PacketError as err:
                 errstr = 'RadiusError:Dropping invalid packet from {0} {1},{2}'.format(host, port, utils.safestr(err))
-                self.logapi.send(content=errstr)
+                self.logapi.send(nasaddr=host, content=errstr)
 
         bas_derferd = self.redb.get_nas(host)
         bas_derferd.addCallbacks(preProcessPacket, self.on_exception)
@@ -175,7 +175,7 @@ class RADIUSAccess(RADIUS):
                 except Exception as err:
                     errstr = "RadiusError:current radius cannot support attribute {0},{1}".format(
                         attr_name,utils.safestr(err.message))
-                    self.logapi.send(content=errstr)
+                    self.logapi.send(nasaddr=req.source[0],content=errstr)
 
             self.send_accept(req, reply)
 
