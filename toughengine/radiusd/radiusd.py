@@ -1,12 +1,18 @@
 #!/usr/bin/env python
 # coding=utf-8
-import sys, os
-from twisted.python.logfile import DailyLogFile
+import sys
+import datetime
+import logging
+import time
+import os
+
 from twisted.python import log
 from twisted.internet import task
 from twisted.internet import protocol
 from twisted.internet import reactor
 from twisted.internet import defer
+import six
+
 from toughengine.radiusd.pyrad import dictionary
 from toughengine.radiusd.pyrad import host
 from toughengine.radiusd.pyrad import packet
@@ -14,11 +20,6 @@ from toughengine.radiusd import utils,store
 from toughengine.radiusd import client
 from toughengine.radiusd.plugins import mac_parse,vlan_parse
 from toughengine.radiusd.plugins import rate_process
-import datetime
-import logging
-import time
-import six
-import os
 
 __verson__ = '2.0'
 
