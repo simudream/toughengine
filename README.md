@@ -1,6 +1,6 @@
 # ToughEngine 
 
-ToughEngine是从[ToughRADIUS](https://github.com/talkincode/ToughRADIUS "ToughRADIUS")项目剥离出来的认证计费引擎，实现了标准的Radius协议，以及支持Radius协议扩张，ToughEngine需要与后端计费策略服务结合实现完整的AAA功能，可以将ToughEngine理解为一个Radius中间件。
+ToughEngine是从[ToughRADIUS](https://github.com/talkincode/ToughRADIUS "ToughRADIUS")项目剥离出来的认证计费引擎，实现了标准的Radius协议，以及支持Radius协议扩展，ToughEngine需要与后端计费策略服务结合实现完整的AAA功能，可以将ToughEngine理解为一个Radius中间件。
 
 ## 文档列表
 
