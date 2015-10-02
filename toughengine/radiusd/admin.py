@@ -56,7 +56,7 @@ class Application(cyclone.web.Application):
             (r"/api/v1/nas/set", handlers.NasSetHandler),
             (r"/api/v1/nas/del", handlers.NasDelHandler),
             (r"/api/v1/nas/get", handlers.NasGetHandler),
-            (r"/api/v1/nas/list", handlers.NasListHandler),
+            (r"/api/v1/nas/all", handlers.NasListHandler),
             (r"/test/authorize", handlers.AuthHandler),
             (r"/test/acctounting", handlers.AcctHandler),
             (r"/test/logger", handlers.LoggerHandler),

@@ -137,7 +137,7 @@ class NasGetHandler(BaseHandler):
             return
 
         nas = yield self.redb.get_nas(ipaddr)
-        self.render_json(code=0,msg='success',data=nas)
+        self.render_json(code=0,msg='success',**nas)
 
 
 
@@ -158,5 +158,5 @@ class NasListHandler(BaseHandler):
             return
 
         nas_list = yield self.redb.list_nas()
-        self.render_json(code=0, msg='success', data=nas_list)
+        self.render_json(code=0, msg='success', nas_list=nas_list)
 
