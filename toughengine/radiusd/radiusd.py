@@ -42,7 +42,6 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
         self.redb = store.RedisStore(self.config)
         self.redb.connect().addCallbacks(self.on_redis_connect,self.on_exception)
         self.radapi = client.HttpClient(self.config,self.redb)
-        self.logapi = client.LoggerClient(self.config,self.redb)
 
     def on_redis_connect(self,resp):
         log.msg("redis connect done {0}".format(resp))
@@ -67,14 +66,14 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
                 _packet.deferred.addCallbacks(self.reply, self.on_exception)
                 _packet.source = (host, port)
                 log.msg("[Radiusd] ::::::: Received radius request: %s" % (str(_packet)), level=logging.INFO)
-                self.logapi.send(nasaddr=host, content=_packet.format_log())
+                self.radapi.logger(nasaddr=host, content=_packet.format_log(), level='info')
                 if self.config.defaults.debug:
                     log.msg(_packet.format_str(), level=logging.DEBUG)
                 proc_deferd = self.processPacket(_packet)
                 proc_deferd.addCallbacks(self.on_process_done, self.on_exception)
             except packet.PacketError as err:
                 errstr = 'RadiusError:Dropping invalid packet from {0} {1},{2}'.format(host, port, utils.safestr(err))
-                self.logapi.send(nasaddr=host, content=errstr)
+                self.radapi.logger(nasaddr=host, content=errstr, level='error')
 
         bas_derferd = self.redb.get_nas(host)
         bas_derferd.addCallbacks(preProcessPacket, self.on_exception)
@@ -89,7 +88,7 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
         :rtype:
         """
         log.msg("[Radiusd] ::::::: Send radius response: %s" % (reply), level=logging.INFO)
-        self.logapi.send(nasaddr=reply.source[0], content=reply.format_log())
+        self.radapi.logger(nasaddr=reply.source[0], content=reply.format_log())
         if self.config.defaults.debug:
             log.msg(reply.format_str(), level=logging.DEBUG)
         self.transport.write(reply.ReplyPacket(), reply.source)
@@ -102,7 +101,7 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
         pass
 
     def on_exception(self, err):
-        self.logapi.send(content=u'RadiusError:Packet process error,{0}'.format(utils.safestr(err)))
+        self.radapi.logger(content=u'RadiusError:Packet process error,{0}'.format(utils.safestr(err)), level='error')
 
 
     def process_delay(self):
@@ -114,7 +113,8 @@ class RADIUS(host.Host, protocol.DatagramProtocol):
                 else:
                     self.reply(self.auth_delay.pop_delay_reject())
             except Exception as err:
-                self.logapi.send(content=u'RadiusError:process_delay error,{0}'.format(utils.safestr(err)))
+                self.radapi.logger(content=u'RadiusError:process_delay error,{0}'.format(utils.safestr(err)),
+                                   level='error')
 
 
 ###############################################################################
@@ -176,7 +176,7 @@ class RADIUSAccess(RADIUS):
                 except Exception as err:
                     errstr = "RadiusError:current radius cannot support attribute {0},{1}".format(
                         attr_name,utils.safestr(err.message))
-                    self.logapi.send(nasaddr=req.source[0],content=errstr)
+                    self.radapi.logger(nasaddr=req.source[0],content=errstr, level='error')
 
             self.send_accept(req, reply)
 
@@ -246,7 +246,7 @@ class RADIUSAccounting(RADIUS):
         req.deferred.callback(reply)
 
         aaa_resp = yield self.radapi.accounting(*req.get_accounting_msg())
-        self.logapi.send(nasaddr=req.source[0], content=aaa_resp['msg'])
+        self.radapi.logger(nasaddr=req.source[0], content=aaa_resp['msg'])
 
 
 

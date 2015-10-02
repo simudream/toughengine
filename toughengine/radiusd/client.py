@@ -7,6 +7,7 @@ from toughengine.radiusd.utils import safestr
 from hashlib import md5
 from twisted.internet import defer
 import json
+import time
 import logging
 
 
@@ -96,7 +97,8 @@ class HttpClient():
         """
         try:
             nas = yield self.redb.get_nas(nasaddr)
-            sign = self.make_sign([username, domain, macaddr, nasaddr, vlanid1, vlanid2, textinfo],nas.get("api_secret"))
+            nonce = str(time.time()),
+            sign = self.make_sign([username, domain, macaddr, nasaddr, vlanid1, vlanid2, textinfo, nonce],nas.get("api_secret"))
             apiurl = nas and nas.get("api_auth_url") or None
             reqdata = json.dumps(dict(
                 username=username,
@@ -106,6 +108,7 @@ class HttpClient():
                 vlanid1=vlanid1,
                 vlanid2=vlanid2,
                 textinfo=safestr(textinfo),
+                nonce=nonce,
                 sign=sign
             ), ensure_ascii=False)
             resp = yield self.send(apiurl, reqdata, nas.get("api_secret"))
@@ -133,8 +136,9 @@ class HttpClient():
         """
         try:
             nas = yield self.redb.get_nas(nasaddr)
+            nonce = str(time.time()),
             sign = self.make_sign([username, session_id, session_time, session_timeout, macaddr, nasaddr, ipaddr,
-                                input_octets, output_octets, input_pkts, output_pkts], nas.get("api_secret"))
+                                input_octets, output_octets, input_pkts, output_pkts,nonce], nas.get("api_secret"))
 
             apiurl = nas and nas.get("api_acct_url") or None
             reqdata = json.dumps(dict(
@@ -150,6 +154,7 @@ class HttpClient():
                 output_octets=output_octets,
                 input_pkts=input_pkts,
                 output_pkts=output_pkts,
+                nonce=nonce,
                 sign=sign
             ), ensure_ascii=False)
             resp = yield self.send(apiurl, reqdata, nas.get("api_secret"))
@@ -159,14 +164,8 @@ class HttpClient():
             defer.returnValue(dict(code=1, msg=u"accounting error, please see log detail"))
 
 
-class LoggerClient():
-
-    def __init__(self,config,redb):
-        self.config = config
-        self.redb = redb
-
     @defer.inlineCallbacks
-    def send(self,nasaddr=None,content=None):
+    def logger(self, nasaddr=None, content=None, level='info'):
         """
         send logger to logserver
         :param nasaddr:
@@ -176,11 +175,21 @@ class LoggerClient():
         apiurl = nas and nas.get("api_logger_url") or self.config.defaults.get("log_server")
         if apiurl:
             if self.config.defaults.debug:
-                log.msg("[LoggerClient] ::::::: Send http log request to {0}, {1}".format(safestr(apiurl), safestr(content)))
+                log.msg("[HttpClient] ::::::: Send log Request to {0}, {1}".format(safestr(apiurl), safestr(content)))
+
+            content = safestr(content)
+            nonce = str(time.time())
+            sign = self.make_sign([nasaddr, content, nonce], nas.get("api_secret"))
+            reqdata = json.dumps(dict(
+                nasaddr=nasaddr,
+                content=content,
+                nonce= nonce,
+                sign=sign
+            ), ensure_ascii=False)
 
             headers = {"Content-Type": ["text/plain;charset=utf-8"]}
-            resp = yield requests.post(safestr(apiurl), data=safestr(content), headers=headers)
-            log.msg("[LoggerClient] ::::::: Resp {0}, Send log done".format(resp.code))
+            resp = yield requests.post(safestr(apiurl), data=reqdata, headers=headers)
+            log.msg("[HttpClient] ::::::: Received Resp {0}, Send log done".format(resp.code))
         else:
-            log.msg("[LoggerClient] ::::::: Not send, {0}".format(safestr(content)))
+            log.msg("[HttpClient] ::::::: Not send, {0}".format(safestr(content)))
 
