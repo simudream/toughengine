@@ -101,6 +101,11 @@ def mk_sign(args):
     _argstr = aescipher.ori_key + ''.join(args)
     return hashlib.md5(_argstr).hexdigest()
 
+
+def get_currtime():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
 class Storage(dict):
     def __getattr__(self, key): 
         try:

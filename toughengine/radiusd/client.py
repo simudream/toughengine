@@ -3,7 +3,7 @@
 
 from twisted.python import log
 from toughengine.radiusd import requests
-from toughengine.radiusd.utils import safestr
+from toughengine.radiusd.utils import safestr,get_currtime
 from hashlib import md5
 from twisted.internet import defer
 import json
@@ -179,11 +179,13 @@ class HttpClient():
 
             content = safestr(content)
             nonce = str(time.time())
-            sign = self.make_sign([nasaddr, content, nonce], nas.get("api_secret"))
+            _datetime = get_currtime()
+            sign = self.make_sign([nasaddr, content, _datetime, nonce], nas.get("api_secret"))
             reqdata = json.dumps(dict(
                 nasaddr=nasaddr,
                 content=content,
-                nonce= nonce,
+                datetime=_datetime,
+                nonce=nonce,
                 sign=sign
             ), ensure_ascii=False)
 
